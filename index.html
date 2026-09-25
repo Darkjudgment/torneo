@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sala de torneo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0e1a;
+    --panel:#111827;
+    --panel-2:#1a2338;
+    --panel-3:#212c46;
+    --border:#22304a;
+    --border-soft:#1a2438;
+    --accent:#3b82f6;
+    --accent-2:#60a5fa;
+    --accent-dim:#1d3a63;
+    --text:#dbe4f5;
+    --text-muted:#8a96b2;
+    --text-faint:#5b6788;
+    --win:#34d399;
+    --loss:#f87171;
+    --bye:#a78bfa;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--void);
+    color:var(--text);
+    font-family:'Inter', system-ui, sans-serif;
+    min-height:100vh;
+    display:flex;
+    line-height:1.5;
+  }
+  h1,h2,h3,.mono-title{ font-family:'Space Grotesk', sans-serif; font-weight:700; letter-spacing:-0.01em; }
+
+  /* ---------- Layout shell ---------- */
+  .shell{ display:flex; width:100%; min-height:100vh; }
+  nav.side{
+    width:220px; flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    padding:20px 14px;
+    position:sticky; top:0; height:100vh;
+  }
+  .brand{
+    font-size:15px; font-weight:700; color:var(--accent-2);
+    padding:0 8px 20px 8px; border-bottom:1px solid var(--border-soft); margin-bottom:16px;
+  }
+  .brand small{ display:block; color:var(--text-faint); font-weight:400; font-size:11px; margin-top:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 10px; border-radius:6px; cursor:pointer;
+    color:var(--text-muted); font-size:14px; font-weight:500;
+    border:1px solid transparent;
+  }
+  .nav-item:hover{ background:var(--panel-2); color:var(--text); }
+  .nav-item.active{ background:var(--accent-dim); color:var(--accent-2); border-color:var(--accent); }
+  .nav-item .dot{ width:6px; height:6px; border-radius:50%; background:var(--text-faint); }
+  .nav-item.active .dot{ background:var(--accent-2); }
+
+  .status-box{
+    margin-top:auto; padding:12px; background:var(--panel-2); border:1px solid var(--border-soft); border-radius:8px;
+    font-size:12px; color:var(--text-muted);
+  }
+  .status-box .val{ color:var(--text); font-weight:600; font-size:13px; }
+
+  main{ flex:1; padding:32px 40px; max-width:1100px; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fadein .18s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .page-head{ margin-bottom:24px; display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .page-head h1{ font-size:22px; }
+  .page-head p{ color:var(--text-muted); font-size:13px; margin-top:4px; }
+
+  /* ---------- Panels / cards ---------- */
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:18px; }
+  .panel h3{ font-size:14px; margin-bottom:14px; color:var(--text); }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:760px){ .grid-2{ grid-template-columns:1fr; } .shell{ flex-direction:column; } nav.side{ width:100%; height:auto; position:relative; flex-direction:row; overflow-x:auto; } .status-box{ display:none; } main{ padding:20px; } }
+
+  /* ---------- Forms ---------- */
+  label{ display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:500; }
+  input[type=text], input[type=number], select{
+    width:100%; background:var(--void); border:1px solid var(--border); color:var(--text);
+    padding:9px 11px; border-radius:6px; font-size:14px; font-family:inherit;
+  }
+  input:focus, select:focus{ outline:none; border-color:var(--accent); }
+  .row{ display:flex; gap:10px; align-items:flex-end; }
+  .row > div{ flex:1; }
+
+  button{
+    font-family:inherit; font-weight:600; font-size:13px; cursor:pointer; border-radius:6px;
+    border:1px solid var(--accent); background:var(--accent); color:#06101f; padding:9px 16px;
+  }
+  button:hover{ background:var(--accent-2); border-color:var(--accent-2); }
+  button.ghost{ background:transparent; color:var(--text); border-color:var(--border); }
+  button.ghost:hover{ background:var(--panel-2); border-color:var(--accent); color:var(--accent-2); }
+  button.danger{ background:transparent; color:var(--loss); border-color:#4a2530; }
+  button.danger:hover{ background:#2a1418; }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+  button.small{ padding:6px 10px; font-size:12px; }
+
+  /* ---------- Tables ---------- */
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; color:var(--text-faint); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; border-bottom:1px solid var(--border); }
+  td{ padding:10px 10px; border-bottom:1px solid var(--border-soft); color:var(--text); }
+  tr:last-child td{ border-bottom:none; }
+  tr:hover td{ background:rgba(59,130,246,0.04); }
+  .num{ font-variant-numeric:tabular-nums; }
+  .rank{ color:var(--text-faint); width:30px; }
+  .rank.top{ color:var(--accent-2); font-weight:700; }
+
+  .empty{ color:var(--text-faint); font-size:13px; text-align:center; padding:30px 10px; }
+
+  /* ---------- Player list ---------- */
+  .player-row{ display:flex; align-items:center; justify-content:space-between; padding:9px 10px; border-bottom:1px solid var(--border-soft); font-size:14px; }
+  .player-row:last-child{ border-bottom:none; }
+  .player-row .pname{ font-weight:500; }
+  .player-row .dropped{ text-decoration:line-through; color:var(--text-faint); }
+
+  /* ---------- Pairing cards ---------- */
+  .pairing{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:10px; }
+  .pairing-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .table-no{ font-size:11px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+  .duelists{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .duelist{ flex:1; font-weight:600; font-size:14px; }
+  .duelist.right{ text-align:right; }
+  .vs{ color:var(--text-faint); font-size:12px; padding:0 8px; }
+  .result-controls{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .badge{ display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge.win{ background:rgba(52,211,153,0.12); color:var(--win); }
+  .badge.loss{ background:rgba(248,113,113,0.12); color:var(--loss); }
+  .badge.bye{ background:rgba(167,139,250,0.12); color:var(--bye); }
+  .badge.pending{ background:var(--panel-3); color:var(--text-faint); }
+  .reported-line{ display:flex; align-items:center; justify-content:space-between; }
+
+  /* ---------- Bracket ---------- */
+  .bracket{ display:flex; gap:30px; overflow-x:auto; padding-bottom:10px; }
+  .bracket-col{ display:flex; flex-direction:column; justify-content:space-around; gap:18px; min-width:200px; }
+  .bracket-match{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; }
+  .bracket-match .bp{ display:flex; justify-content:space-between; padding:3px 0; }
+  .bracket-match .bp.winner{ color:var(--accent-2); font-weight:600; }
+  .bracket-col-title{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; text-align:center; }
+
+  .helper{ font-size:12px; color:var(--text-faint); margin-top:8px; }
+  .tag{ font-size:11px; padding:2px 7px; border-radius:4px; background:var(--panel-3); color:var(--text-muted); }
+  .tag.blue{ background:var(--accent-dim); color:var(--accent-2); }
+
+  /* ---------- Reporte de impresión (PDF vía "Guardar como PDF") ---------- */
+  .print-report{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    .print-report, .print-report *{ visibility:visible; }
+    .print-report{
+      display:block; position:absolute; top:0; left:0; width:100%;
+      padding:0; margin:0; background:#fff; color:#111;
+      font-family:'Inter', system-ui, sans-serif;
+    }
+    .print-report h1{ font-size:20px; margin-bottom:2px; color:#111; }
+    .print-report .pr-sub{ font-size:12px; color:#555; margin-bottom:18px; }
+    .print-report h2{ font-size:14px; margin:20px 0 8px 0; color:#111; border-bottom:1px solid #ccc; padding-bottom:4px; }
+    .print-report table{ width:100%; border-collapse:collapse; font-size:11px; margin-bottom:10px; }
+    .print-report th{ text-align:left; background:#eee; color:#111; padding:5px 7px; border:1px solid #ccc; }
+    .print-report td{ padding:5px 7px; border:1px solid #ccc; color:#111; }
+    .print-report .pr-footer{ font-size:10px; color:#777; margin-top:20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="side">
+    <div class="brand" id="brandName">Sala de torneo<small id="brandSub">Sin torneo activo</small></div>
+    <div class="nav-item active" data-view="setup"><span class="dot"></span>Jugadores</div>
+    <div class="nav-item" data-view="round"><span class="dot"></span>Ronda actual</div>
+    <div class="nav-item" data-view="standings"><span class="dot"></span>Clasificación</div>
+    <div class="nav-item" data-view="topcut"><span class="dot"></span>Top Cut</div>
+    <div class="status-box">
+      <div>Fase: <span class="val" id="statusPhase">Configuración</span></div>
+      <div style="margin-top:6px;">Ronda: <span class="val" id="statusRound">–</span></div>
+      <div style="margin-top:6px;">Jugadores activos: <span class="val" id="statusPlayers">0</span></div>
+    </div>
+    <button class="danger" id="endTournamentBtn" onclick="endTournament()" style="width:100%; margin-top:12px;">Finalizar torneo</button>
+  </nav>
+
+  <main>
+
+       <!-- ===================== VISTA: JUGADORES ===================== -->
+      <section class="view active" id="view-setup">
+        <div style="text-align: center;">
+          <picture>
+            <img src="logo.png" alt="Andretroxsc Logo" style="max-width: 20%; height:20%;">
+          </picture>
+        </div>
+
+      <div class="panel">
+        <h3>Nombre del torneo</h3>
+        <input type="text" id="tournamentName" placeholder="Ej. Regional de otoño 2026">
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Añadir duelista</h3>
+          <div class="row">
+            <div>
+              <label>Nombre del jugador</label>
+              <input type="text" id="newPlayerName" placeholder="Nombre completo" onkeydown="if(event.key==='Enter')addPlayer()">
+            </div>
+            <button onclick="addPlayer()">Añadir</button>
+          </div>
+          <div class="helper" id="formatHelper">Añade jugadores para ver el formato sugerido.</div>
+        </div>
+
+        <div class="panel">
+          <h3>Formato</h3>
+          <div class="row">
+            <div>
+              <label>Rondas suizas</label>
+              <input type="number" id="swissRounds" min="1" value="3">
+            </div>
+            <div>
+              <label>Tamaño del Top Cut</label>
+              <select id="cutSize">
+                <option value="0">Sin corte</option>
+                <option value="4">Top 4</option>
+                <option value="8" selected>Top 8</option>
+              </select>
+            </div>
+          </div>
+          <div class="helper">Los valores se sugieren automáticamente según la Tournament Policy 2026, pero puedes ajustarlos.</div>
+          <div style="margin-top:14px;">
+            <button onclick="startTournament()" id="startBtn">Iniciar torneo →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Duelistas inscritos (<span id="playerCount">0</span>)</h3>
+        <div id="playerList"><div class="empty">Aún no hay jugadores inscritos.</div></div>
+        <div class="helper">Si un jugador tiene una mesa pendiente en la ronda actual, repórtala primero (victoria, derrota o doble derrota); recién entonces podrás retirarlo. El drop nunca decide el resultado de una mesa por sí mismo, solo lo excluye de las rondas futuras — su historial ya jugado se mantiene y sigue contando en el OMW%/OOMW% de sus rivales.</div>
+      </div>
+    </section>
+
+    <!-- ===================== VISTA: RONDA ===================== -->
+    <section class="view" id="view-round">
+      <div class="page-head">
+        <div>
+          <h1 id="roundTitle">Ronda –</h1>
+          <p id="roundSubtitle">El torneo aún no ha comenzado.</p>
+        </div>
+        <div>
+          <button class="ghost" onclick="addLatePlayer()" id="lateEntryBtn" style="display:none;">+ Añadir jugador tardío</button>
+          <button class="ghost" onclick="regeneratePairings()" id="regenBtn" style="display:none;">Regenerar emparejamientos</button>
+          <button onclick="closeRoundAndAdvance()" id="advanceBtn" style="display:none;">Cerrar ronda →</button>
+        </div>
+      </div>
+      <div id="pairingsContainer"><div class="empty">Inicia el torneo desde la pestaña Jugadores.</div></div>
+    </section>
+
+    <!-- ===================== VISTA: CLASIFICACIÓN ===================== -->
+    <section class="view" id="view-standings">
+      <div class="page-head">
+        <div>
+          <h1>Clasificación</h1>
+          <p>Puntos, MWP, OMW% y OOMW% — el sistema real de desempates de KTS, con piso del 33.33%. No se usa el marcador de duelos.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div id="standingsTableWrap"><div class="empty">Sin datos todavía.</div></div>
+      </div>
+    </section>
+
+    <!-- ===================== VISTA: TOP CUT ===================== -->
+    <section class="view" id="view-topcut">
+      <div class="page-head">
+        <div>
+          <h1>Top Cut</h1>
+          <p>Fase eliminatoria a partir de la clasificación tras las rondas suizas.</p>
+        </div>
+      </div>
+      <div class="panel" id="topcutPanel">
+        <div class="empty">El Top Cut se generará al finalizar las rondas suizas.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="print-report" id="printReport"></div>
+
+<script>
+/* ============================================================
+   ESTADO
+   ============================================================ */
+const STORAGE_KEY = 'ygo_tournament_state_v1';
+
+let state = loadState() || {
+  name: '',
+  phase: 'setup',            // setup | swiss | topcut | finished
+  players: [],                // {id, name, dropped}
+  matchHistory: {},           // id -> [{opponentId|null(bye), matchWin, isBye, doubleLoss}]
+  rounds: [],                  // [{number, pairings:[{table,p1,p2,result}], closed}]
+  swissRoundsTotal: 3,
+  cutSize: 8,
+  bracket: null
+};
+
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function loadState(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+function uid(){ return 'p'+Math.random().toString(36).slice(2,9); }
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=> showView(item.dataset.view));
+});
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelector(`.nav-item[data-view="${name}"]`).classList.add('active');
+  if(name==='round') renderRoundView();
+  if(name==='standings') renderStandings();
+  if(name==='topcut') renderTopCut();
+}
+
+/* ============================================================
+   FORMATO SUGERIDO (Tournament Policy 2026, Tier 1-2)
+   ============================================================ */
+const FORMAT_TABLE = [
+  {min:4,   max:8,    rounds:3,  cut:0},
+  {min:9,   max:16,   rounds:4,  cut:4},
+  {min:17,  max:32,   rounds:5,  cut:4},
+  {min:33,  max:64,   rounds:6,  cut:8},
+  {min:65,  max:128,  rounds:7,  cut:8},
+  {min:129, max:256,  rounds:8,  cut:8},
+  {min:257, max:512,  rounds:9,  cut:8},
+  {min:513, max:1024, rounds:10, cut:8},
+];
+function suggestFormat(n){
+  if(n < 4) return null;
+  const row = FORMAT_TABLE.find(r => n>=r.min && n<=r.max) || FORMAT_TABLE[FORMAT_TABLE.length-1];
+  return row;
+}
+
+/* ============================================================
+   JUGADORES
+   ============================================================ */
+function addPlayer(){
+  const input = document.getElementById('newPlayerName');
+  const name = input.value.trim();
+  if(!name) return;
+  state.players.push({id: uid(), name, dropped:false});
+  input.value='';
+  input.focus();
+  saveState();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+}
+function addLatePlayer(){
+  const round = currentRound();
+  if(!round || round.number !== 1 || round.closed){
+    alert('Solo se pueden añadir jugadores tardíos mientras la Ronda 1 sigue abierta.');
+    return;
+  }
+  const name = prompt('Nombre del duelista que llega tarde:\n\nSe le registrará una ronda perdida en la Ronda 1 (0 puntos) y será emparejado normalmente desde la Ronda 2.');
+  if(!name || !name.trim()) return;
+
+  const id = uid();
+  state.players.push({id, name: name.trim(), dropped:false});
+  state.matchHistory[id] = [{opponentId:null, matchWin:false, isBye:false, doubleLoss:false, isRoundLoss:true}];
+
+  saveState();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+  renderRoundView();
+}
+function dropPlayer(id){
+  const p = state.players.find(p=>p.id===id);
+  if(!p || p.dropped) return;
+
+  // El drop NO decide resultados por sí mismo. Si el jugador tiene una mesa
+  // activa sin resultado en la ronda en curso, hay que reportar primero el
+  // resultado real (victoria, derrota o doble derrota) y recién entonces
+  // se puede retirar para las rondas siguientes.
+  const round = currentRound();
+  if(round && state.phase==='swiss' && !round.closed){
+    const pendingPr = round.pairings.find(pr => (pr.p1id===id || pr.p2id===id) && pr.p2id && !pr.result);
+    if(pendingPr){
+      alert('Este jugador tiene un resultado pendiente en la ronda actual. Repórtalo primero (victoria, derrota o doble derrota) y luego podrás retirarlo.');
+      return;
+    }
+  }
+
+  p.dropped = true;
+  saveState();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+  renderRoundView();
+}
+function undoDrop(id){
+  const p = state.players.find(p=>p.id===id);
+  if(!p || !p.dropped) return;
+  p.dropped = false;
+  saveState();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+  renderRoundView();
+}
+function removePlayer(id){
+  if(state.phase !== 'setup') return; // solo se puede eliminar antes de iniciar
+  state.players = state.players.filter(p=>p.id!==id);
+  saveState();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+}
+function renderPlayerList(){
+  const wrap = document.getElementById('playerList');
+  document.getElementById('playerCount').textContent = state.players.length;
+  if(state.players.length===0){ wrap.innerHTML = '<div class="empty">Aún no hay jugadores inscritos.</div>'; return; }
+  wrap.innerHTML = state.players.map(p=>`
+    <div class="player-row">
+      <span class="pname ${p.dropped?'dropped':''}">${escapeHtml(p.name)}</span>
+      <span style="display:flex; gap:6px;">
+        ${state.phase!=='setup' ? (p.dropped ? `<button class="ghost small" onclick="undoDrop('${p.id}')">Deshacer retiro</button>` : `<button class="danger small" onclick="dropPlayer('${p.id}')">Retirar</button>`) : `<button class="danger small" onclick="removePlayer('${p.id}')">Quitar</button>`}
+      </span>
+    </div>
+  `).join('');
+}
+function updateFormatHelper(){
+  const n = state.players.length;
+  const helper = document.getElementById('formatHelper');
+  const suggestion = suggestFormat(n);
+  if(!suggestion){
+    helper.textContent = `Necesitas al menos 4 jugadores para sugerir un formato (actualmente ${n}).`;
+    return;
+  }
+  document.getElementById('swissRounds').value = suggestion.rounds;
+  document.getElementById('cutSize').value = suggestion.cut;
+  helper.textContent = `Sugerido para ${n} jugadores: ${suggestion.rounds} rondas suizas, ${suggestion.cut ? 'Top '+suggestion.cut : 'sin corte'}.`;
+}
+
+/* ============================================================
+   INICIAR TORNEO
+   ============================================================ */
+function startTournament(){
+  const active = state.players.filter(p=>!p.dropped);
+  if(active.length < 4){ alert('Se necesitan al menos 4 jugadores para iniciar.'); return; }
+  state.name = document.getElementById('tournamentName').value.trim() || 'Torneo sin nombre';
+  state.swissRoundsTotal = parseInt(document.getElementById('swissRounds').value,10) || 3;
+  state.cutSize = parseInt(document.getElementById('cutSize').value,10) || 0;
+  state.phase = 'swiss';
+  state.matchHistory = {};
+  state.players.forEach(p=>{ state.matchHistory[p.id] = []; });
+  state.rounds = [];
+  saveState();
+  updateBrand();
+  updateStatusBox();
+  generateRound();
+  showView('round');
+}
+
+/* ============================================================
+   ALGORITMO DE EMPAREJAMIENTO SUIZO
+   ============================================================ */
+function matchPointsOf(playerId){
+  const hist = state.matchHistory[playerId] || [];
+  return hist.reduce((sum,m)=> sum + (m.matchWin ? 3 : 0), 0);
+}
+function haveEnfrentado(idA, idB){
+  const hist = state.matchHistory[idA] || [];
+  return hist.some(m=>m.opponentId===idB);
+}
+function hasHadBye(id){
+  const hist = state.matchHistory[id] || [];
+  return hist.some(m=>m.isBye);
+}
+
+function generatePairings(){
+  const active = state.players.filter(p=>!p.dropped);
+
+  // Agrupar por puntos, orden descendente. Dentro de cada grupo, orden aleatorio
+  // para no ser predecible (se puede sustituir por orden alfabético si se prefiere).
+  const byPoints = {};
+  active.forEach(p=>{
+    const pts = matchPointsOf(p.id);
+    (byPoints[pts] = byPoints[pts]||[]).push(p);
+  });
+  const pointGroups = Object.keys(byPoints).map(Number).sort((a,b)=>b-a);
+  let pool = [];
+  pointGroups.forEach(pts=>{
+    const group = byPoints[pts];
+    shuffleArray(group);
+    pool = pool.concat(group);
+  });
+
+  let byePlayer = null;
+  if(pool.length % 2 === 1){
+    // Bye para el jugador de menor puntaje que no lo haya recibido aún
+    for(let i=pool.length-1; i>=0; i--){
+      if(!hasHadBye(pool[i].id)){ byePlayer = pool.splice(i,1)[0]; break; }
+    }
+    if(!byePlayer) byePlayer = pool.pop(); // si todos ya tuvieron bye, el último de la tabla
+  }
+
+  const pairings = [];
+  let table = 1;
+  const unpaired = [...pool];
+  while(unpaired.length){
+    const p1 = unpaired.shift();
+    let idx = unpaired.findIndex(p2 => !haveEnfrentado(p1.id, p2.id));
+    if(idx === -1) idx = 0; // fallback: rematch forzado si no queda otra opción
+    const p2 = unpaired.splice(idx,1)[0];
+    pairings.push({table: table++, p1id:p1.id, p2id:p2.id, result:null});
+  }
+  if(byePlayer){
+    pairings.push({table: table++, p1id: byePlayer.id, p2id:null, result:{bye:true}});
+  }
+  return pairings;
+}
+function shuffleArray(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+}
+
+function generateRound(){
+  const roundNumber = state.rounds.length + 1;
+  const pairings = generatePairings();
+  state.rounds.push({number: roundNumber, pairings, closed:false});
+  saveState();
+}
+function regeneratePairings(){
+  if(!confirm('¿Regenerar los emparejamientos de esta ronda? Se perderán resultados ya cargados en esta ronda.')) return;
+  state.rounds.pop();
+  generateRound();
+  renderRoundView();
+}
+
+/* ============================================================
+   RONDA ACTUAL: RENDER Y REPORTE DE RESULTADOS
+   ============================================================ */
+function currentRound(){
+  return state.rounds[state.rounds.length-1] || null;
+}
+function playerName(id){
+  const p = state.players.find(p=>p.id===id);
+  return p ? p.name : '—';
+}
+function isDropped(id){
+  const p = state.players.find(p=>p.id===id);
+  return p ? p.dropped : false;
+}
+
+function renderRoundView(){
+  const container = document.getElementById('pairingsContainer');
+  const round = currentRound();
+  const regenBtn = document.getElementById('regenBtn');
+  const advanceBtn = document.getElementById('advanceBtn');
+  const lateEntryBtn = document.getElementById('lateEntryBtn');
+
+  if(state.phase==='setup' || !round){
+    document.getElementById('roundTitle').textContent = 'Ronda –';
+    document.getElementById('roundSubtitle').textContent = 'El torneo aún no ha comenzado.';
+    container.innerHTML = '<div class="empty">Inicia el torneo desde la pestaña Jugadores.</div>';
+    regenBtn.style.display='none'; advanceBtn.style.display='none'; lateEntryBtn.style.display='none';
+    return;
+  }
+  if(state.phase==='topcut' || state.phase==='finished'){
+    document.getElementById('roundTitle').textContent = 'Rondas suizas finalizadas';
+    document.getElementById('roundSubtitle').textContent = 'Consulta la pestaña Top Cut para ver la fase eliminatoria.';
+    container.innerHTML = '<div class="empty">Ve a la pestaña Top Cut.</div>';
+    regenBtn.style.display='none'; advanceBtn.style.display='none'; lateEntryBtn.style.display='none';
+    return;
+  }
+
+  document.getElementById('roundTitle').textContent = `Ronda ${round.number} de ${state.swissRoundsTotal}`;
+  document.getElementById('roundSubtitle').textContent = 'Reporta el resultado de cada mesa: solo importa quién ganó el match, o si hubo doble derrota.';
+  regenBtn.style.display = round.pairings.some(p=>p.result && !p.result.bye) ? 'none' : 'inline-block';
+  lateEntryBtn.style.display = (round.number===1 && !round.closed) ? 'inline-block' : 'none';
+
+  container.innerHTML = round.pairings.map(pr=>{
+    if(pr.result && pr.result.bye){
+      return `
+      <div class="pairing">
+        <div class="pairing-top"><span class="table-no">Mesa ${pr.table}</span><span class="badge bye">BYE</span></div>
+        <div class="duelists"><div class="duelist">${escapeHtml(playerName(pr.p1id))}</div><div class="vs">recibe la ronda libre</div><div></div></div>
+      </div>`;
+    }
+    const reported = !!pr.result;
+    const r = pr.result;
+    let badge = '<span class="badge pending">Pendiente</span>';
+    if(reported){
+      if(r.doubleLoss) badge = '<span class="badge loss">Doble derrota</span>';
+      else badge = `<span class="badge win">Gana ${r.winner==='p1' ? escapeHtml(playerName(pr.p1id)) : escapeHtml(playerName(pr.p2id))}</span>`;
+    }
+    const p1dropped = isDropped(pr.p1id);
+    const p2dropped = isDropped(pr.p2id);
+    return `
+    <div class="pairing">
+      <div class="pairing-top"><span class="table-no">Mesa ${pr.table}</span>${badge}</div>
+      <div class="duelists">
+        <div class="duelist">${escapeHtml(playerName(pr.p1id))}</div>
+        <div class="vs">vs</div>
+        <div class="duelist right">${escapeHtml(playerName(pr.p2id))}</div>
+      </div>
+      ${!reported ? `
+      <div class="result-controls">
+        <button class="ghost small" onclick="reportResult('${pr.table}','p1')">Victoria: ${escapeHtml(playerName(pr.p1id))}</button>
+        <button class="ghost small" onclick="reportResult('${pr.table}','p2')">Victoria: ${escapeHtml(playerName(pr.p2id))}</button>
+        <button class="danger small" onclick="reportDoubleLoss('${pr.table}')">Doble derrota</button>
+      </div>` : `<div class="helper">Resultado cargado. <a href="#" onclick="undoResult('${pr.table}'); return false;" style="color:var(--accent-2);">Corregir</a></div>`}
+      <div class="result-controls">
+        ${p1dropped
+          ? `<button class="ghost small" onclick="undoDrop('${pr.p1id}')">Deshacer retiro: ${escapeHtml(playerName(pr.p1id))}</button>`
+          : `<button class="danger small" onclick="dropPlayer('${pr.p1id}')">Retirar a ${escapeHtml(playerName(pr.p1id))}</button>`}
+        ${p2dropped
+          ? `<button class="ghost small" onclick="undoDrop('${pr.p2id}')">Deshacer retiro: ${escapeHtml(playerName(pr.p2id))}</button>`
+          : `<button class="danger small" onclick="dropPlayer('${pr.p2id}')">Retirar a ${escapeHtml(playerName(pr.p2id))}</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  const allReported = round.pairings.every(pr => pr.result);
+  advanceBtn.style.display = allReported ? 'inline-block' : 'none';
+}
+
+function findPairing(table){
+  return currentRound().pairings.find(p=>String(p.table)===String(table));
+}
+function reportResult(table, winner){
+  const pr = findPairing(table);
+  pr.result = {winner, doubleLoss:false}; // winner: 'p1' o 'p2'
+  applyResultToHistory(pr);
+  saveState();
+  renderRoundView();
+}
+function reportDoubleLoss(table){
+  const pr = findPairing(table);
+  pr.result = {winner:null, doubleLoss:true};
+  applyResultToHistory(pr);
+  saveState();
+  renderRoundView();
+}
+function undoResult(table){
+  const pr = findPairing(table);
+  removeResultFromHistory(pr);
+  pr.result = null;
+  saveState();
+  renderRoundView();
+}
+
+function applyResultToHistory(pr){
+  const {p1id, p2id, result} = pr;
+  const p1win = !result.doubleLoss && result.winner === 'p1';
+  const p2win = !result.doubleLoss && result.winner === 'p2';
+  state.matchHistory[p1id].push({opponentId:p2id, matchWin:p1win, isBye:false, doubleLoss:!!result.doubleLoss});
+  state.matchHistory[p2id].push({opponentId:p1id, matchWin:p2win, isBye:false, doubleLoss:!!result.doubleLoss});
+}
+function removeResultFromHistory(pr){
+  const {p1id, p2id} = pr;
+  state.matchHistory[p1id] = state.matchHistory[p1id].filter(m=>!(m.opponentId===p2id));
+  if(p2id) state.matchHistory[p2id] = state.matchHistory[p2id].filter(m=>!(m.opponentId===p1id));
+}
+
+// Aplicar bye directamente al generar la ronda
+function applyByeToHistory(round){
+  round.pairings.forEach(pr=>{
+    if(pr.result && pr.result.bye && !pr._applied){
+      state.matchHistory[pr.p1id].push({opponentId:null, matchWin:true, isBye:true, doubleLoss:false});
+      pr._applied = true;
+    }
+  });
+}
+
+function closeRoundAndAdvance(){
+  const round = currentRound();
+  applyByeToHistory(round);
+  round.closed = true;
+  saveState();
+
+  if(round.number >= state.swissRoundsTotal){
+    if(state.cutSize && state.cutSize>0){
+      state.phase = 'topcut';
+      buildBracket();
+    } else {
+      state.phase = 'finished';
+    }
+    saveState();
+    updateStatusBox();
+    showView('standings');
+  } else {
+    generateRound();
+    updateStatusBox();
+    renderRoundView();
+  }
+}
+
+/* ============================================================
+   TIEBREAKERS Y CLASIFICACIÓN
+   ============================================================ */
+/* Sistema real de desempates de KTS (no confundir con Magic/DCI, que sí usa
+   Game Win %). Yu-Gi-Oh solo usa, en este orden:
+   1) Puntos de match (3/0)
+   2) MWP propio como base -> OMW% (promedio del MWP de tus rivales)
+   3) OOMW% (promedio del OMW% de tus rivales, es decir, "el récord de los
+      rivales de tus rivales")
+   Se calcula en tres pasadas para evitar recursión: primero MWP de todos,
+   luego OMW% de todos (usando el MWP), luego OOMW% de todos (usando el OMW%). */
+
+function baseStats(playerId){
+  const hist = state.matchHistory[playerId] || [];
+  const roundsPlayed = hist.length; // el bye cuenta como ronda jugada
+  const matchPoints = hist.reduce((s,m)=> s + (m.matchWin?3:0), 0);
+  const possible = 3 * roundsPlayed;
+  let mwp = possible>0 ? matchPoints/possible : 0;
+  mwp = Math.max(mwp, 0.33);
+  const wins = hist.filter(m=>m.matchWin).length;
+  const losses = hist.filter(m=>!m.matchWin && !m.isBye).length; // la doble derrota cuenta como derrota en el récord (0 puntos, igual que perder)
+  return {matchPoints, mwp, wins, losses, roundsPlayed};
+}
+
+function opponentsOf(playerId){
+  const hist = state.matchHistory[playerId] || [];
+  return hist.filter(m=>!m.isBye && !m.isRoundLoss).map(m=>m.opponentId);
+}
+
+function getStandings(){
+  const players = state.players;
+
+  // Pasada 1: MWP de cada jugador
+  const mwpMap = {};
+  players.forEach(p=>{ mwpMap[p.id] = baseStats(p.id); });
+
+  // Pasada 2: OMW% de cada jugador (promedio del MWP de sus rivales)
+  const omwMap = {};
+  players.forEach(p=>{
+    const opps = opponentsOf(p.id);
+    omwMap[p.id] = opps.length ? opps.reduce((s,id)=> s + mwpMap[id].mwp, 0) / opps.length : 0.33;
+  });
+
+  // Pasada 3: OOMW% de cada jugador (promedio del OMW% de sus rivales)
+  const oomwMap = {};
+  players.forEach(p=>{
+    const opps = opponentsOf(p.id);
+    oomwMap[p.id] = opps.length ? opps.reduce((s,id)=> s + omwMap[id], 0) / opps.length : 0.33;
+  });
+
+  const rows = players.map(p=>({
+    id:p.id, name:p.name, dropped:p.dropped,
+    matchPoints: mwpMap[p.id].matchPoints,
+    wins: mwpMap[p.id].wins, losses: mwpMap[p.id].losses,
+    mwp: mwpMap[p.id].mwp, omw: omwMap[p.id], oomw: oomwMap[p.id]
+  }));
+
+  rows.sort((a,b)=>{
+    if(b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
+    if(b.omw !== a.omw) return b.omw - a.omw;
+    if(b.oomw !== a.oomw) return b.oomw - a.oomw;
+    return a.name.localeCompare(b.name);
+  });
+  return rows;
+}
+
+function pct(x){ return (x*100).toFixed(2)+'%'; }
+
+function renderStandings(){
+  const wrap = document.getElementById('standingsTableWrap');
+  if(state.players.length===0 || state.phase==='setup'){
+    wrap.innerHTML = '<div class="empty">Sin datos todavía.</div>';
+    return;
+  }
+  const rows = getStandings();
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>#</th><th>Duelista</th><th class="num">Pts</th><th class="num">W-L</th>
+        <th class="num">MWP</th><th class="num">OMW%</th><th class="num">OOMW%</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r,i)=>`
+          <tr>
+            <td class="rank ${i<8?'top':''}">${i+1}</td>
+            <td>${escapeHtml(r.name)} ${r.dropped?'<span class="tag">Drop</span>':''}</td>
+            <td class="num">${r.matchPoints}</td>
+            <td class="num">${r.wins}-${r.losses}</td>
+            <td class="num">${pct(r.mwp)}</td>
+            <td class="num">${pct(r.omw)}</td>
+            <td class="num">${pct(r.oomw)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+/* ============================================================
+   TOP CUT (eliminación directa)
+   ============================================================ */
+function seedOrder(n){
+  // Orden de bracket estándar (1v8,4v5,2v7,3v6 para 8; 1v4,2v3 para 4)
+  if(n===8) return [[1,8],[4,5],[2,7],[3,6]];
+  if(n===4) return [[1,4],[2,3]];
+  if(n===2) return [[1,2]];
+  return [];
+}
+function buildBracket(){
+  const standings = getStandings().filter(r=>!r.dropped).slice(0, state.cutSize);
+  const seeds = seedOrder(state.cutSize);
+  const round1 = seeds.map(([a,b],i)=>({
+    match: i+1,
+    p1id: standings[a-1]?.id || null,
+    p2id: standings[b-1]?.id || null,
+    result: null
+  }));
+  state.bracket = { size: state.cutSize, rounds: [round1] };
+  saveState();
+}
+function bracketMatchName(id){
+  if(!id) return 'Bye';
+  return playerName(id);
+}
+function reportBracketResult(roundIdx, matchIdx, winnerId){
+  const m = state.bracket.rounds[roundIdx][matchIdx];
+  m.result = {winnerId};
+  // Si es la última ronda registrada y ya están todos resueltos, generar siguiente ronda
+  const round = state.bracket.rounds[roundIdx];
+  const allDone = round.every(mm=>mm.result || !mm.p2id);
+  round.forEach(mm=>{ if(!mm.p2id && !mm.result) mm.result = {winnerId: mm.p1id}; }); // bye automático en bracket
+  if(allDone && round.length>1){
+    const winners = round.map(mm=> mm.result ? mm.result.winnerId : null);
+    const nextRound = [];
+    for(let i=0;i<winners.length;i+=2){
+      nextRound.push({match:(i/2)+1, p1id:winners[i], p2id:winners[i+1]||null, result:null});
+    }
+    state.bracket.rounds.push(nextRound);
+  } else if(allDone && round.length===1){
+    state.phase = 'finished';
+  }
+  saveState();
+  renderTopCut();
+}
+
+function renderTopCut(){
+  const panel = document.getElementById('topcutPanel');
+  if(state.phase==='setup' || state.phase==='swiss'){
+    panel.innerHTML = '<div class="empty">El Top Cut se generará al finalizar las rondas suizas.</div>';
+    return;
+  }
+  if(!state.bracket){ panel.innerHTML = '<div class="empty">Sin corte configurado para este torneo.</div>'; return; }
+
+  const colTitles = state.bracket.size===8 ? ['Cuartos de final','Semifinal','Final'] : (state.bracket.size===4 ? ['Semifinal','Final'] : ['Final']);
+
+  panel.innerHTML = `<div class="bracket">${
+    state.bracket.rounds.map((round, ri)=>`
+      <div class="bracket-col">
+        <div class="bracket-col-title">${colTitles[ri]||''}</div>
+        ${round.map((m,mi)=>`
+          <div class="bracket-match">
+            <div class="bp ${m.result && m.result.winnerId===m.p1id ? 'winner':''}">
+              <span>${escapeHtml(bracketMatchName(m.p1id))}</span>
+              ${!m.result && m.p1id && m.p2id ? `<button class="ghost small" onclick="reportBracketResult(${ri},${mi},'${m.p1id}')">Gana</button>` : ''}
+            </div>
+            <div class="bp ${m.result && m.result.winnerId===m.p2id ? 'winner':''}">
+              <span>${escapeHtml(bracketMatchName(m.p2id))}</span>
+              ${!m.result && m.p1id && m.p2id ? `<button class="ghost small" onclick="reportBracketResult(${ri},${mi},'${m.p2id}')">Gana</button>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')
+  }</div>`;
+}
+
+/* ============================================================
+   UTILIDADES DE INTERFAZ
+   ============================================================ */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function updateBrand(){
+  document.getElementById('brandSub').textContent = state.name || 'Sin torneo activo';
+}
+function updateStatusBox(){
+  document.getElementById('statusPhase').textContent = {setup:'Configuración', swiss:'Rondas suizas', topcut:'Top Cut', finished:'Finalizado'}[state.phase];
+  const round = currentRound();
+  document.getElementById('statusRound').textContent = (state.phase==='swiss' && round) ? `${round.number} / ${state.swissRoundsTotal}` : '–';
+  document.getElementById('statusPlayers').textContent = state.players.filter(p=>!p.dropped).length;
+}
+
+/* ============================================================
+   REPORTE IMPRIMIBLE (PDF vía diálogo de impresión del navegador)
+   ============================================================ */
+function describeResult(pr){
+  if(!pr.result) return 'Pendiente';
+  if(pr.result.bye) return 'BYE';
+  if(pr.result.doubleLoss) return 'Doble derrota';
+  const winnerName = pr.result.winner==='p1' ? playerName(pr.p1id) : playerName(pr.p2id);
+  return 'Gana ' + winnerName;
+}
+
+function buildPrintReport(){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'});
+  const activeCount = state.players.filter(p=>!p.dropped).length;
+  const droppedCount = state.players.filter(p=>p.dropped).length;
+
+  let html = `
+    <h1>${escapeHtml(state.name || 'Torneo sin nombre')}</h1>
+    <div class="pr-sub">Reporte final generado el ${dateStr} · ${state.players.length} duelistas inscritos (${activeCount} activos, ${droppedCount} retirados) · ${state.rounds.length} rondas suizas${state.bracket ? ' · Top ' + state.bracket.size : ''}</div>
+
+    <h2>Duelistas inscritos</h2>
+    <table>
+      <thead><tr><th>#</th><th>Nombre</th><th>Estado</th></tr></thead>
+      <tbody>
+        ${state.players.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.dropped?'Retirado':'Activo'}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+
+  state.rounds.forEach(round=>{
+    html += `
+      <h2>Ronda ${round.number}</h2>
+      <table>
+        <thead><tr><th>Mesa</th><th>Jugador 1</th><th>Jugador 2</th><th>Resultado</th></tr></thead>
+        <tbody>
+          ${round.pairings.map(pr=>`
+            <tr>
+              <td>${pr.table}</td>
+              <td>${escapeHtml(playerName(pr.p1id))}</td>
+              <td>${pr.p2id ? escapeHtml(playerName(pr.p2id)) : '—'}</td>
+              <td>${describeResult(pr)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  });
+
+  const standings = getStandings();
+  html += `
+    <h2>Clasificación final</h2>
+    <table>
+      <thead><tr><th>#</th><th>Duelista</th><th>Pts</th><th>W-L</th><th>MWP</th><th>OMW%</th><th>OOMW%</th></tr></thead>
+      <tbody>
+        ${standings.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td>${escapeHtml(r.name)}${r.dropped?' (retirado)':''}</td>
+            <td>${r.matchPoints}</td>
+            <td>${r.wins}-${r.losses}</td>
+            <td>${pct(r.mwp)}</td>
+            <td>${pct(r.omw)}</td>
+            <td>${pct(r.oomw)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  if(state.bracket){
+    const colTitles = state.bracket.size===8 ? ['Cuartos de final','Semifinal','Final'] : (state.bracket.size===4 ? ['Semifinal','Final'] : ['Final']);
+    html += `<h2>Top Cut</h2>`;
+    state.bracket.rounds.forEach((round, ri)=>{
+      html += `
+        <table>
+          <thead><tr><th colspan="2">${colTitles[ri]||('Ronda '+(ri+1))}</th></tr></thead>
+          <tbody>
+            ${round.map(m=>`
+              <tr>
+                <td>${escapeHtml(bracketMatchName(m.p1id))}</td>
+                <td>${m.result && m.result.winnerId===m.p1id ? 'Ganador' : (m.result ? '' : '')}</td>
+              </tr>
+              <tr>
+                <td>${escapeHtml(bracketMatchName(m.p2id))}</td>
+                <td>${m.result && m.result.winnerId===m.p2id ? 'Ganador' : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    });
+  }
+
+  html += `<div class="pr-footer">Generado con Sala de torneo — desempates calculados según el sistema de la Tournament Policy vigente (Puntos → OMW% → OOMW%).</div>`;
+
+  document.getElementById('printReport').innerHTML = html;
+}
+
+function generateTournamentPDF(){
+  buildPrintReport();
+  window.print();
+}
+
+/* ============================================================
+   FINALIZAR TORNEO (libera el localStorage de esta app)
+   ============================================================ */
+function defaultState(){
+  return {
+    name: '',
+    phase: 'setup',
+    players: [],
+    matchHistory: {},
+    rounds: [],
+    swissRoundsTotal: 3,
+    cutSize: 8,
+    bracket: null
+  };
+}
+function endTournament(){
+  const confirmMsg = state.phase==='setup'
+    ? '¿Borrar los datos guardados de esta app? No hay ningún torneo en curso con resultados.'
+    : '¿Finalizar el torneo actual y borrar todos sus datos guardados en este navegador? Esta acción no se puede deshacer.';
+  if(!confirm(confirmMsg)) return;
+
+  const hasData = state.players.length > 0;
+  if(hasData){
+    const wantsPdf = confirm('¿Quieres generar un PDF con los datos del torneo (rondas y clasificación final) antes de borrar todo?');
+    if(wantsPdf) generateTournamentPDF();
+  }
+
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState();
+
+  document.getElementById('tournamentName').value = '';
+  document.getElementById('newPlayerName').value = '';
+  document.getElementById('swissRounds').value = 3;
+  document.getElementById('cutSize').value = 8;
+  document.getElementById('startBtn').textContent = 'Iniciar torneo →';
+  document.getElementById('startBtn').disabled = false;
+
+  updateBrand();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+  renderRoundView();
+  renderStandings();
+  renderTopCut();
+  showView('setup');
+}
+
+/* ============================================================
+   INICIALIZACIÓN
+   ============================================================ */
+function init(){
+  document.getElementById('tournamentName').value = state.name || '';
+  document.getElementById('swissRounds').value = state.swissRoundsTotal || 3;
+  document.getElementById('cutSize').value = state.cutSize || 8;
+  updateBrand();
+  renderPlayerList();
+  updateFormatHelper();
+  updateStatusBox();
+  if(state.phase !== 'setup'){
+    document.getElementById('startBtn').textContent = 'Torneo en curso';
+    document.getElementById('startBtn').disabled = true;
+  }
+}
+document.getElementById('newPlayerName')?.addEventListener('input', ()=>{});
+init();
+</script>
+</body>
+</html>
