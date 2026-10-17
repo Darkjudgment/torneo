@@ -2,10 +2,46 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Torneo YGO">
 <title>Sala de torneo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+(function(){
+  var icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
+    + '<rect width="512" height="512" rx="96" fill="#0a0e1a"/>'
+    + '<rect x="120" y="96" width="180" height="260" rx="16" fill="#1a2338" stroke="#3b82f6" stroke-width="8" transform="rotate(-8 210 226)"/>'
+    + '<rect x="210" y="140" width="180" height="260" rx="16" fill="#111827" stroke="#60a5fa" stroke-width="8" transform="rotate(8 300 270)"/>'
+    + '<circle cx="256" cy="256" r="40" fill="#3b82f6"/>'
+    + '</svg>';
+  var iconUri = 'data:image/svg+xml,' + encodeURIComponent(icon);
+  var manifest = {
+    name: 'Sala de torneo — Yu-Gi-Oh',
+    short_name: 'Torneo YGO',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#0a0e1a',
+    theme_color: '#0a0e1a',
+    icons: [{ src: iconUri, sizes: '512x512', type: 'image/svg+xml', purpose: 'any' }]
+  };
+  var manifestUri = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+
+  var link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = manifestUri;
+  document.head.appendChild(link);
+
+  var appleIcon = document.createElement('link');
+  appleIcon.rel = 'apple-touch-icon';
+  appleIcon.href = iconUri;
+  document.head.appendChild(appleIcon);
+})();
+</script>
 <style>
   :root{
     --void:#0a0e1a;
@@ -23,7 +59,9 @@
     --win:#34d399;
     --loss:#f87171;
     --bye:#a78bfa;
+    scroll-padding-top: env(safe-area-inset-top, 0px);
   }
+  html{ height:100%; }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
     background:var(--void);
@@ -32,6 +70,8 @@
     min-height:100vh;
     display:flex;
     line-height:1.5;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   h1,h2,h3,.mono-title{ font-family:'Space Grotesk', sans-serif; font-weight:700; letter-spacing:-0.01em; }
 
@@ -189,13 +229,14 @@
 
   <main>
 
-       <!-- ===================== VISTA: JUGADORES ===================== -->
-      <section class="view active" id="view-setup">
-        <div style="text-align: center;">
-          <picture>
-            <img src="logo.png" alt="Andretroxsc Logo" style="max-width: 20%; height:20%;">
-          </picture>
+    <!-- ===================== VISTA: JUGADORES ===================== -->
+    <section class="view active" id="view-setup">
+      <div class="page-head">
+        <div>
+          <h1>Configuración del torneo</h1>
+          <p>Inscribe duelistas y define el formato antes de iniciar la ronda 1.</p>
         </div>
+      </div>
 
       <div class="panel">
         <h3>Nombre del torneo</h3>
@@ -513,21 +554,61 @@ function generatePairings(){
     if(!byePlayer) byePlayer = pool.pop(); // si todos ya tuvieron bye, el último de la tabla
   }
 
+  const matchedPairs = backtrackPairings(pool) || greedyPairings(pool);
+
   const pairings = [];
   let table = 1;
-  const unpaired = [...pool];
-  while(unpaired.length){
-    const p1 = unpaired.shift();
-    let idx = unpaired.findIndex(p2 => !haveEnfrentado(p1.id, p2.id));
-    if(idx === -1) idx = 0; // fallback: rematch forzado si no queda otra opción
-    const p2 = unpaired.splice(idx,1)[0];
+  matchedPairs.forEach(([p1,p2])=>{
     pairings.push({table: table++, p1id:p1.id, p2id:p2.id, result:null});
-  }
+  });
   if(byePlayer){
     pairings.push({table: table++, p1id: byePlayer.id, p2id:null, result:{bye:true}});
   }
   return pairings;
 }
+
+// Busca una combinación completa de parejas sin rivales repetidos, probando
+// y retrocediendo (backtracking) en vez de quedarse con la primera opción
+// disponible como hacía el algoritmo voraz anterior. Devuelve null si no
+// encuentra ninguna combinación válida dentro del límite de intentos, o si
+// matemáticamente es imposible evitar una repetición.
+function backtrackPairings(poolArray){
+  const MAX_ATTEMPTS = 30000;
+  let attempts = 0;
+  function helper(remaining){
+    if(remaining.length === 0) return [];
+    attempts++;
+    if(attempts > MAX_ATTEMPTS) return null;
+    const p1 = remaining[0];
+    const rest = remaining.slice(1);
+    for(let i=0; i<rest.length; i++){
+      const p2 = rest[i];
+      if(!haveEnfrentado(p1.id, p2.id)){
+        const nextRemaining = rest.slice(0,i).concat(rest.slice(i+1));
+        const sub = helper(nextRemaining);
+        if(sub !== null) return [[p1,p2]].concat(sub);
+      }
+    }
+    return null;
+  }
+  return helper(poolArray);
+}
+
+// Último recurso si el backtracking no encuentra combinación posible (p.ej.
+// grupos muy pequeños donde una repetición es matemáticamente inevitable).
+function greedyPairings(poolArray){
+  const unpaired = [...poolArray];
+  const result = [];
+  while(unpaired.length){
+    const p1 = unpaired.shift();
+    let idx = unpaired.findIndex(p2 => !haveEnfrentado(p1.id, p2.id));
+    if(idx === -1) idx = 0;
+    const p2 = unpaired.splice(idx,1)[0];
+    result.push([p1,p2]);
+  }
+  return result;
+}
+
 function shuffleArray(arr){
   for(let i=arr.length-1;i>0;i--){
     const j = Math.floor(Math.random()*(i+1));
@@ -538,12 +619,15 @@ function shuffleArray(arr){
 function generateRound(){
   const roundNumber = state.rounds.length + 1;
   const pairings = generatePairings();
-  state.rounds.push({number: roundNumber, pairings, closed:false});
+  const round = {number: roundNumber, pairings, closed:false};
+  state.rounds.push(round);
+  applyByeToHistory(round); // el bye suma sus puntos de inmediato, igual que cualquier resultado reportado
   saveState();
 }
 function regeneratePairings(){
   if(!confirm('¿Regenerar los emparejamientos de esta ronda? Se perderán resultados ya cargados en esta ronda.')) return;
-  state.rounds.pop();
+  const round = state.rounds.pop();
+  removeByeFromHistory(round); // deshacer los puntos del bye de la ronda que se descarta
   generateRound();
   renderRoundView();
 }
@@ -590,12 +674,16 @@ function renderRoundView(){
   regenBtn.style.display = round.pairings.some(p=>p.result && !p.result.bye) ? 'none' : 'inline-block';
   lateEntryBtn.style.display = (round.number===1 && !round.closed) ? 'inline-block' : 'none';
 
+  const codeMap = {};
+  getStandings().forEach(r=>{ codeMap[r.id] = r.code; });
+  const codeTag = id => `<span class="tag blue" style="font-family:'Space Grotesk',monospace; letter-spacing:.04em; margin-left:6px;">${codeMap[id]||''}</span>`;
+
   container.innerHTML = round.pairings.map(pr=>{
     if(pr.result && pr.result.bye){
       return `
       <div class="pairing">
         <div class="pairing-top"><span class="table-no">Mesa ${pr.table}</span><span class="badge bye">BYE</span></div>
-        <div class="duelists"><div class="duelist">${escapeHtml(playerName(pr.p1id))}</div><div class="vs">recibe la ronda libre</div><div></div></div>
+        <div class="duelists"><div class="duelist">${escapeHtml(playerName(pr.p1id))} ${codeTag(pr.p1id)}</div><div class="vs">recibe la ronda libre</div><div></div></div>
       </div>`;
     }
     const reported = !!pr.result;
@@ -611,9 +699,9 @@ function renderRoundView(){
     <div class="pairing">
       <div class="pairing-top"><span class="table-no">Mesa ${pr.table}</span>${badge}</div>
       <div class="duelists">
-        <div class="duelist">${escapeHtml(playerName(pr.p1id))}</div>
+        <div class="duelist">${escapeHtml(playerName(pr.p1id))} ${codeTag(pr.p1id)}</div>
         <div class="vs">vs</div>
-        <div class="duelist right">${escapeHtml(playerName(pr.p2id))}</div>
+        <div class="duelist right">${escapeHtml(playerName(pr.p2id))} ${codeTag(pr.p2id)}</div>
       </div>
       ${!reported ? `
       <div class="result-controls">
@@ -683,11 +771,18 @@ function applyByeToHistory(round){
     }
   });
 }
+function removeByeFromHistory(round){
+  round.pairings.forEach(pr=>{
+    if(pr.result && pr.result.bye && pr._applied){
+      const hist = state.matchHistory[pr.p1id];
+      if(hist && hist.length && hist[hist.length-1].isBye) hist.pop();
+    }
+  });
+}
 
 function closeRoundAndAdvance(){
   const round = currentRound();
-  applyByeToHistory(round);
-  round.closed = true;
+  round.closed = true; // el bye de esta ronda ya se aplicó al generarse, no hace falta hacerlo aquí
   saveState();
 
   if(round.number >= state.swissRoundsTotal){
@@ -736,6 +831,21 @@ function opponentsOf(playerId){
   return hist.filter(m=>!m.isBye && !m.isRoundLoss).map(m=>m.opponentId);
 }
 
+// Código de desempate en formato XXYYYZZZ:
+//   XX  = puntos de match (2 dígitos)
+//   YYY = OMW%, primeros tres dígitos (ej. 66.6667% -> 666)
+//   ZZZ = OOMW%, primeros tres dígitos, igual criterio
+function threeDigitCode(frac){
+  let v = Math.floor(frac * 1000); // ej. 0.6667 -> 666
+  if(v > 999) v = 999; // tope para mantener el ancho fijo de 3 dígitos (caso raro: 100%)
+  if(v < 0) v = 0;
+  return String(v).padStart(3,'0');
+}
+function tiebreakCode(points, omw, oomw){
+  const xx = String(Math.max(0, points)).padStart(2,'0');
+  return xx + threeDigitCode(omw) + threeDigitCode(oomw);
+}
+
 function getStandings(){
   const players = state.players;
 
@@ -761,7 +871,8 @@ function getStandings(){
     id:p.id, name:p.name, dropped:p.dropped,
     matchPoints: mwpMap[p.id].matchPoints,
     wins: mwpMap[p.id].wins, losses: mwpMap[p.id].losses,
-    mwp: mwpMap[p.id].mwp, omw: omwMap[p.id], oomw: oomwMap[p.id]
+    mwp: mwpMap[p.id].mwp, omw: omwMap[p.id], oomw: oomwMap[p.id],
+    code: tiebreakCode(mwpMap[p.id].matchPoints, omwMap[p.id], oomwMap[p.id])
   }));
 
   rows.sort((a,b)=>{
@@ -786,18 +897,19 @@ function renderStandings(){
     <table>
       <thead><tr>
         <th>#</th><th>Duelista</th><th class="num">Pts</th><th class="num">W-L</th>
-        <th class="num">MWP</th><th class="num">OMW%</th><th class="num">OOMW%</th>
+        <th class="num">MWP</th><th class="num">OMW%</th><th class="num">OOMW%</th><th class="num">Tiebreak</th>
       </tr></thead>
       <tbody>
         ${rows.map((r,i)=>`
           <tr>
             <td class="rank ${i<8?'top':''}">${i+1}</td>
-            <td>${escapeHtml(r.name)} ${r.dropped?'<span class="tag">Drop</span>':''}</td>
+            <td>${escapeHtml(r.name)} ${r.dropped?'<span class="tag">retirado</span>':''}</td>
             <td class="num">${r.matchPoints}</td>
             <td class="num">${r.wins}-${r.losses}</td>
             <td class="num">${pct(r.mwp)}</td>
             <td class="num">${pct(r.omw)}</td>
             <td class="num">${pct(r.oomw)}</td>
+            <td class="num" style="font-family:'Space Grotesk',monospace; letter-spacing:.05em;">${r.code}</td>
           </tr>
         `).join('')}
       </tbody>
